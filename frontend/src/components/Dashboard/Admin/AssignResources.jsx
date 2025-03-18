@@ -4,6 +4,7 @@ import { usersAPI, assignmentsAPI } from "../../../api";
 import Button from "../../common/Button";
 import Alert from "../../common/Alert";
 import Loader from "../../common/Loader";
+import Modal from "../../common/Modal";
 
 const AssignResources = () => {
   const { userId } = useParams();
@@ -15,9 +16,15 @@ const AssignResources = () => {
   const [folders, setFolders] = useState([]);
   const [selectedFolders, setSelectedFolders] = useState([]);
 
+  // For unassignment functionality
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [itemToUnassign, setItemToUnassign] = useState(null);
+  const [unassignType, setUnassignType] = useState(null); // 'container' or 'folder'
+
   const [loading, setLoading] = useState(true);
   const [folderLoading, setFolderLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
+  const [unassigning, setUnassigning] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -108,6 +115,10 @@ const AssignResources = () => {
 
       setSuccess("Resources assigned successfully");
 
+      // Refresh user data
+      const userRes = await usersAPI.getUserById(userId);
+      setUser(userRes.data.user);
+
       // Reset form
       setSelectedContainer("");
       setFolders([]);
@@ -116,6 +127,40 @@ const AssignResources = () => {
       setError(err.response?.data?.message || "Failed to assign resources");
     } finally {
       setAssigning(false);
+    }
+  };
+
+  // New function to handle unassignment
+  const confirmUnassign = (id, type) => {
+    setItemToUnassign(id);
+    setUnassignType(type);
+    setConfirmModalOpen(true);
+  };
+
+  // New function to execute unassignment
+  const handleUnassign = async () => {
+    try {
+      setUnassigning(true);
+      setError("");
+
+      await assignmentsAPI.revokeAssignment(itemToUnassign, unassignType);
+
+      setSuccess(
+        `${
+          unassignType === "container" ? "Container" : "Folder"
+        } unassigned successfully`
+      );
+
+      // Refresh user data
+      const userRes = await usersAPI.getUserById(userId);
+      setUser(userRes.data.user);
+
+      // Close modal
+      setConfirmModalOpen(false);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to unassign resource");
+    } finally {
+      setUnassigning(false);
     }
   };
 
@@ -154,12 +199,7 @@ const AssignResources = () => {
             </div>
             <div>
               <span className="text-gray-600 font-medium">Role:</span>
-              <span
-                className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                ${user.role === 'doctor' ? 'bg-green-100 text-green-800' : 
-                user.role === 'nurse' ? 'bg-purple-100 text-purple-800' : 
-                'bg-blue-100 text-blue-800'}"
-              >
+              <span className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
                 {user.role}
               </span>
             </div>
@@ -175,7 +215,18 @@ const AssignResources = () => {
               <div className="space-y-3">
                 {user.containerAssignments.map((assignment) => (
                   <div key={assignment.id} className="bg-gray-50 p-3 rounded">
-                    <p className="font-medium">{assignment.containerName}</p>
+                    <div className="flex justify-between items-center">
+                      <p className="font-medium">{assignment.containerName}</p>
+                      <Button
+                        color="red"
+                        className="text-xs py-1 px-2"
+                        onClick={() =>
+                          confirmUnassign(assignment.id, "container")
+                        }
+                      >
+                        Unassign
+                      </Button>
+                    </div>
                     <div className="mt-2 text-sm">
                       <p className="text-gray-600">
                         {user.folderAssignments?.filter(
@@ -184,6 +235,43 @@ const AssignResources = () => {
                         folders assigned
                       </p>
                     </div>
+
+                    {/* Show folder assignments for this container */}
+                    {user.folderAssignments?.filter(
+                      (f) => f.containerName === assignment.containerName
+                    ).length > 0 && (
+                      <div className="mt-2 pl-4 border-l-2 border-gray-300">
+                        <p className="text-xs text-gray-500 mb-1">
+                          Assigned folders:
+                        </p>
+                        <div className="space-y-1">
+                          {user.folderAssignments
+                            .filter(
+                              (f) =>
+                                f.containerName === assignment.containerName
+                            )
+                            .map((folder) => (
+                              <div
+                                key={folder.id}
+                                className="flex justify-between items-center bg-white p-2 rounded shadow-sm"
+                              >
+                                <span className="text-xs">
+                                  {folder.folderName}
+                                </span>
+                                <Button
+                                  color="red"
+                                  className="text-xs py-0 px-1"
+                                  onClick={() =>
+                                    confirmUnassign(folder.id, "folder")
+                                  }
+                                >
+                                  Unassign
+                                </Button>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -260,6 +348,39 @@ const AssignResources = () => {
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <Modal
+        isOpen={confirmModalOpen}
+        onClose={() => setConfirmModalOpen(false)}
+        title={`Confirm Unassignment`}
+        footer={
+          <>
+            <Button
+              type="button"
+              color="red"
+              onClick={handleUnassign}
+              disabled={unassigning}
+              className="ml-3"
+            >
+              {unassigning ? "Unassigning..." : "Unassign"}
+            </Button>
+            <Button
+              type="button"
+              color="gray"
+              onClick={() => setConfirmModalOpen(false)}
+              className="ml-3"
+            >
+              Cancel
+            </Button>
+          </>
+        }
+      >
+        <p>
+          Are you sure you want to unassign this {unassignType}? This action
+          cannot be undone.
+        </p>
+      </Modal>
     </div>
   );
 };

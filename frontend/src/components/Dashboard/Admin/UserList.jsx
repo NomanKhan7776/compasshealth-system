@@ -135,7 +135,7 @@ const UserList = () => {
                     </Link>
                     <Link to={`/users/assign/${user.userId}`}>
                       <Button color="green" className="text-xs py-1 px-2">
-                        Assign
+                        Manage Assignments
                       </Button>
                     </Link>
                     <Button
