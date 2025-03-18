@@ -19,44 +19,51 @@ const app = express();
 // Middleware
 // app.use(express.json());
 // CORS configuration
-const allowedOrigins = [
-  process.env.FRONTEND_URL, // Your production frontend URL (to be set later)
-  "http://localhost:5173", // Vite default
-  "http://localhost:3000", // React default
-  "http://localhost:8080", // Another common development port
-  "null", // For local file testing
-];
-
-// Filter out undefined values
-const validOrigins = allowedOrigins.filter((origin) => origin);
-
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps or curl)
-      if (!origin) return callback(null, true);
-
-      if (validOrigins.indexOf(origin) === -1) {
-        // For development purposes, you can make this less strict
-        if (process.env.NODE_ENV === "development") {
-          return callback(null, true); // Allow all origins in development
-        }
-
-        const msg =
-          "The CORS policy for this site does not allow access from the specified Origin.";
-        return callback(new Error(msg), false);
-      }
-      return callback(null, true);
-    },
-    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
-    credentials: true,
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-auth-token"],
   })
 );
+// const allowedOrigins = [
+//   process.env.FRONTEND_URL, // Your production frontend URL (to be set later)
+//   "http://localhost:5173", // Vite default
+//   "http://localhost:3000", // React default
+//   "http://localhost:8080", // Another common development port
+//   "null", // For local file testing
+// ];
 
-// Handle OPTIONS requests
-app.options("*", cors());
+// // Filter out undefined values
+// const validOrigins = allowedOrigins.filter((origin) => origin);
+
+// app.use(
+//   cors({
+//     origin: function (origin, callback) {
+//       // Allow requests with no origin (like mobile apps or curl)
+//       if (!origin) return callback(null, true);
+
+//       if (validOrigins.indexOf(origin) === -1) {
+//         // For development purposes, you can make this less strict
+//         if (process.env.NODE_ENV === "development") {
+//           return callback(null, true); // Allow all origins in development
+//         }
+
+//         const msg =
+//           "The CORS policy for this site does not allow access from the specified Origin.";
+//         return callback(new Error(msg), false);
+//       }
+//       return callback(null, true);
+//     },
+//     methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+//     credentials: true,
+//     preflightContinue: false,
+//     optionsSuccessStatus: 204,
+//   })
+// );
+
+// // Handle OPTIONS requests
+// app.options("*", cors());
 
 app.use("/api/auth", express.json());
 app.use("/api/users", express.json());
