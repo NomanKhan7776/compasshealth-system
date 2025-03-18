@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth.js";
 import { useAssignments } from "../../../hooks/useAssignments.js";
@@ -7,35 +7,31 @@ import Alert from "../../common/Alert";
 
 const UserDashboard = () => {
   const { currentUser } = useAuth();
-  const {
-    assignmentsData,
-    loading,
-    error,
-    fetchAssignments,
-    hasAssignments,
-    checkHasAssignments,
-    lastFetched,
-  } = useAssignments();
+  const { assignmentsData, loading, error, fetchAssignments, lastFetched } =
+    useAssignments();
+
+  // Ref to track if initial load happened
+  const initialLoadDone = useRef(false);
 
   useEffect(() => {
-    const loadData = async () => {
-      // First check if user has any assignments to prevent unnecessary API calls
-      const userHasAssignments = await checkHasAssignments();
-      if (userHasAssignments) {
-        await fetchAssignments();
-      }
-    };
+    // Only fetch once when the component mounts
+    if (currentUser && !initialLoadDone.current) {
+      fetchAssignments(true);
+      initialLoadDone.current = true;
+    }
 
-    loadData();
-  }, [checkHasAssignments, fetchAssignments]);
+    // Cleanup function
+    return () => {
+      // Component unmounted
+    };
+  }, [currentUser]); // Remove fetchAssignments from dependencies
 
   // Handle manual refresh
   const handleRefresh = () => {
     fetchAssignments(true); // Force refresh
   };
 
-  // Only show loading indicator if we're actually loading and might have assignments
-  if (loading && hasAssignments !== false) return <Loader size="large" />;
+  if (loading && !initialLoadDone.current) return <Loader size="large" />;
   if (error) return <Alert message={error} type="error" />;
 
   return (
@@ -45,36 +41,34 @@ const UserDashboard = () => {
           Welcome, {currentUser.name}
         </h1>
 
-        {hasAssignments && (
-          <div className="flex items-center">
-            {lastFetched && (
-              <span className="text-xs text-gray-500 mr-2">
-                Last updated: {new Date(lastFetched).toLocaleTimeString()}
-              </span>
-            )}
-            <button
-              onClick={handleRefresh}
-              className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 py-1 px-3 rounded flex items-center"
-              disabled={loading}
+        <div className="flex items-center">
+          {lastFetched && (
+            <span className="text-xs text-gray-500 mr-2">
+              Last updated: {new Date(lastFetched).toLocaleTimeString()}
+            </span>
+          )}
+          <button
+            onClick={handleRefresh}
+            className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 py-1 px-3 rounded flex items-center"
+            disabled={loading}
+          >
+            <svg
+              className="w-4 h-4 mr-1"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
             >
-              <svg
-                className="w-4 h-4 mr-1"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              Refresh
-            </button>
-          </div>
-        )}
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">

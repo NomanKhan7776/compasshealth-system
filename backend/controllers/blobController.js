@@ -13,16 +13,16 @@ const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 
 // Configure multer for file uploads
-// const upload = multer({ dest: "uploads/" });
+const upload = multer({ dest: "uploads/" });
 
 // Configure multer to use memory storage instead of disk storage
-const memoryStorage = multer.memoryStorage();
-const upload = multer({
-  storage: memoryStorage,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // Limit file size to 10MB
-  },
-});
+// const memoryStorage = multer.memoryStorage();
+// const upload = multer({
+//   storage: memoryStorage,
+//   limits: {
+//     fileSize: 10 * 1024 * 1024, // Limit file size to 10MB
+//   },
+// });
 
 // Helper function to log file operations for audit trail
 const logFileOperation = async (
@@ -303,126 +303,6 @@ exports.getBlobSasUrl = async (req, res) => {
 // @route   POST api/blobs/:containerName/:folderName
 // @desc    Upload a blob
 // @access  Private/Admin,Doctor,Nurse
-// exports.uploadBlob = async (req, res) => {
-//   // Use multer middleware to handle file upload
-//   upload.single("file")(req, res, async (err) => {
-//     if (err) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "File upload error: " + err.message,
-//       });
-//     }
-
-//     // console.log("File upload request received", req.file);
-
-//     // Check if file was uploaded
-//     if (!req.file) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "No file uploaded",
-//       });
-//     }
-
-//     try {
-//       const { containerName, folderName } = req.params;
-//       const { filename } = req.body;
-
-//       // console.log("Processing file upload with params:", {
-//       //   containerName,
-//       //   folderName,
-//       // });
-
-//       // Check if user has access to this folder
-//       const hasAccess = await checkUserAccess(
-//         req.user.userId,
-//         containerName,
-//         folderName
-//       );
-//       if (!hasAccess) {
-//         // Clean up uploaded file
-//         fs.unlinkSync(req.file.path);
-
-//         return res.status(403).json({
-//           success: false,
-//           message: "Access denied",
-//         });
-//       }
-
-//       // Get container client
-//       const containerClient =
-//         blobServiceClient.getContainerClient(containerName);
-
-//       // Check if container exists
-//       const containerExists = await containerClient.exists();
-//       if (!containerExists) {
-//         // Clean up uploaded file
-//         fs.unlinkSync(req.file.path);
-
-//         return res.status(404).json({
-//           success: false,
-//           message: "Container not found",
-//         });
-//       }
-
-//       // Generate blob name
-//       const blobName = filename || `${uuidv4()}-${req.file.originalname}`;
-//       const fullBlobName = `${folderName}/${blobName}`;
-
-//       // Get blob client
-//       const blobClient = containerClient.getBlobClient(fullBlobName);
-//       const blockBlobClient = blobClient.getBlockBlobClient();
-
-//       // Upload file
-//       const fileContent = fs.readFileSync(req.file.path);
-//       const uploadOptions = {
-//         blobHTTPHeaders: {
-//           blobContentType: req.file.mimetype,
-//         },
-//       };
-
-//       await blockBlobClient.uploadData(fileContent, uploadOptions);
-
-//       // Clean up uploaded file
-//       fs.unlinkSync(req.file.path);
-
-//       // Log the upload operation for audit
-//       await logFileOperation(
-//         req.user.userId,
-//         containerName,
-//         folderName,
-//         blobName,
-//         "UPLOAD"
-//       );
-
-//       res.status(201).json({
-//         success: true,
-//         containerName,
-//         folderName,
-//         blobName,
-//         fullPath: fullBlobName,
-//         contentType: req.file.mimetype,
-//         size: req.file.size,
-//         uploadedBy: {
-//           id: req.user.userId,
-//           role: req.user.role,
-//           name: req.user.name,
-//         },
-//       });
-//     } catch (err) {
-//       // Clean up uploaded file if it exists
-//       if (req.file && fs.existsSync(req.file.path)) {
-//         fs.unlinkSync(req.file.path);
-//       }
-
-//       console.error("Upload error:", err.message);
-//       res.status(500).json({
-//         success: false,
-//         message: "Server error: " + err.message,
-//       });
-//     }
-//   });
-// };
-
 exports.uploadBlob = async (req, res) => {
   // Use multer middleware to handle file upload
   upload.single("file")(req, res, async (err) => {
@@ -432,6 +312,8 @@ exports.uploadBlob = async (req, res) => {
         message: "File upload error: " + err.message,
       });
     }
+
+    // console.log("File upload request received", req.file);
 
     // Check if file was uploaded
     if (!req.file) {
@@ -445,6 +327,11 @@ exports.uploadBlob = async (req, res) => {
       const { containerName, folderName } = req.params;
       const { filename } = req.body;
 
+      // console.log("Processing file upload with params:", {
+      //   containerName,
+      //   folderName,
+      // });
+
       // Check if user has access to this folder
       const hasAccess = await checkUserAccess(
         req.user.userId,
@@ -452,6 +339,9 @@ exports.uploadBlob = async (req, res) => {
         folderName
       );
       if (!hasAccess) {
+        // Clean up uploaded file
+        fs.unlinkSync(req.file.path);
+
         return res.status(403).json({
           success: false,
           message: "Access denied",
@@ -465,6 +355,9 @@ exports.uploadBlob = async (req, res) => {
       // Check if container exists
       const containerExists = await containerClient.exists();
       if (!containerExists) {
+        // Clean up uploaded file
+        fs.unlinkSync(req.file.path);
+
         return res.status(404).json({
           success: false,
           message: "Container not found",
@@ -479,19 +372,18 @@ exports.uploadBlob = async (req, res) => {
       const blobClient = containerClient.getBlobClient(fullBlobName);
       const blockBlobClient = blobClient.getBlockBlobClient();
 
-      // Upload file - using buffer from memory storage instead of file from disk
+      // Upload file
+      const fileContent = fs.readFileSync(req.file.path);
       const uploadOptions = {
         blobHTTPHeaders: {
           blobContentType: req.file.mimetype,
         },
       };
 
-      // Upload directly from buffer instead of reading from disk
-      await blockBlobClient.upload(
-        req.file.buffer,
-        req.file.size,
-        uploadOptions
-      );
+      await blockBlobClient.uploadData(fileContent, uploadOptions);
+
+      // Clean up uploaded file
+      fs.unlinkSync(req.file.path);
 
       // Log the upload operation for audit
       await logFileOperation(
@@ -517,6 +409,11 @@ exports.uploadBlob = async (req, res) => {
         },
       });
     } catch (err) {
+      // Clean up uploaded file if it exists
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+
       console.error("Upload error:", err.message);
       res.status(500).json({
         success: false,
@@ -525,6 +422,109 @@ exports.uploadBlob = async (req, res) => {
     }
   });
 };
+
+// exports.uploadBlob = async (req, res) => {
+//   // Use multer middleware to handle file upload
+//   upload.single("file")(req, res, async (err) => {
+//     if (err) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "File upload error: " + err.message,
+//       });
+//     }
+
+//     // Check if file was uploaded
+//     if (!req.file) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "No file uploaded",
+//       });
+//     }
+
+//     try {
+//       const { containerName, folderName } = req.params;
+//       const { filename } = req.body;
+
+//       // Check if user has access to this folder
+//       const hasAccess = await checkUserAccess(
+//         req.user.userId,
+//         containerName,
+//         folderName
+//       );
+//       if (!hasAccess) {
+//         return res.status(403).json({
+//           success: false,
+//           message: "Access denied",
+//         });
+//       }
+
+//       // Get container client
+//       const containerClient =
+//         blobServiceClient.getContainerClient(containerName);
+
+//       // Check if container exists
+//       const containerExists = await containerClient.exists();
+//       if (!containerExists) {
+//         return res.status(404).json({
+//           success: false,
+//           message: "Container not found",
+//         });
+//       }
+
+//       // Generate blob name
+//       const blobName = filename || `${uuidv4()}-${req.file.originalname}`;
+//       const fullBlobName = `${folderName}/${blobName}`;
+
+//       // Get blob client
+//       const blobClient = containerClient.getBlobClient(fullBlobName);
+//       const blockBlobClient = blobClient.getBlockBlobClient();
+
+//       // Upload file - using buffer from memory storage instead of file from disk
+//       const uploadOptions = {
+//         blobHTTPHeaders: {
+//           blobContentType: req.file.mimetype,
+//         },
+//       };
+
+//       // Upload directly from buffer instead of reading from disk
+//       await blockBlobClient.upload(
+//         req.file.buffer,
+//         req.file.size,
+//         uploadOptions
+//       );
+
+//       // Log the upload operation for audit
+//       await logFileOperation(
+//         req.user.userId,
+//         containerName,
+//         folderName,
+//         blobName,
+//         "UPLOAD"
+//       );
+
+//       res.status(201).json({
+//         success: true,
+//         containerName,
+//         folderName,
+//         blobName,
+//         fullPath: fullBlobName,
+//         contentType: req.file.mimetype,
+//         size: req.file.size,
+//         uploadedBy: {
+//           id: req.user.userId,
+//           role: req.user.role,
+//           name: req.user.name,
+//         },
+//       });
+//     } catch (err) {
+//       console.error("Upload error:", err.message);
+//       res.status(500).json({
+//         success: false,
+//         message: "Server error: " + err.message,
+//       });
+//     }
+//   });
+// };
 
 // @route   DELETE api/blobs/:containerName/:folderName/:blobName
 // @desc    Delete a blob

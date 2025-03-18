@@ -86,6 +86,13 @@ export const AuthProvider = ({ children }) => {
   const login = async (username, password) => {
     try {
       setError(null);
+      // Clear any existing state first
+      localStorage.removeItem("token");
+      setCurrentUser(null);
+
+      // Clear any cached data from other context providers
+      sessionStorage.clear();
+
       const response = await authAPI.login(username, password);
 
       const { token, user } = response.data;
@@ -93,8 +100,7 @@ export const AuthProvider = ({ children }) => {
       // Store the token
       localStorage.setItem("token", token);
 
-      // IMPORTANT: Set the current user with a structure that matches parseUserFromToken
-      // This ensures consistency between direct login and refresh
+      // Set the current user with a structure that matches parseUserFromToken
       setCurrentUser({
         id: user.userId || user.id, // Handle both formats
         role: user.role,
@@ -110,8 +116,18 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    // Clear authentication data
     localStorage.removeItem("token");
+
+    // Clear any cached data
+    localStorage.removeItem("lastFetched");
+    sessionStorage.clear();
+
+    // Reset state
     setCurrentUser(null);
+
+    // Force clear any in-memory data states
+    window.dispatchEvent(new Event("app:logout"));
   };
 
   const isAdmin = () => {
