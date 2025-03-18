@@ -20,32 +20,40 @@ const app = express();
 // app.use(express.json());
 // CORS configuration
 const allowedOrigins = [
-  "https://compasshealth-system.vercel.app",
-  "https://compasshealth-system-f-git-2cf847-noman-khans-projects-29ab56d0.vercel.app",
-  "http://localhost:5173",
-  "http://localhost:3000",
+  process.env.FRONTEND_URL, // Your production frontend URL (to be set later)
+  'http://localhost:5173',  // Vite default
+  'http://localhost:3000',  // React default
+  'http://localhost:8080',  // Another common development port
+  'null'                    // For local file testing
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) === -1) {
-        const msg =
-          "The CORS policy for this site does not allow access from the specified Origin.";
-        return callback(new Error(msg), false);
+// Filter out undefined values
+const validOrigins = allowedOrigins.filter(origin => origin);
+
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    
+    if (validOrigins.indexOf(origin) === -1) {
+      // For development purposes, you can make this less strict
+      if (process.env.NODE_ENV === 'development') {
+        return callback(null, true); // Allow all origins in development
       }
-      return callback(null, true);
-    },
-    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
-    credentials: true,
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
-  })
-);
+      
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+}));
 
 // Handle OPTIONS requests
-app.options("*", cors());
+app.options('*', cors());
 
 app.use("/api/auth", express.json());
 app.use("/api/users", express.json());
