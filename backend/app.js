@@ -18,7 +18,35 @@ const app = express();
 
 // Middleware
 // app.use(express.json());
-app.use(cors());
+// CORS configuration
+const allowedOrigins = [
+  "https://compasshealth-system.vercel.app",
+  "https://compasshealth-system-f-git-2cf847-noman-khans-projects-29ab56d0.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg =
+          "The CORS policy for this site does not allow access from the specified Origin.";
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  })
+);
+
+// Handle OPTIONS requests
+app.options("*", cors());
+
 app.use("/api/auth", express.json());
 app.use("/api/users", express.json());
 app.use("/api/assignments", express.json());
@@ -26,12 +54,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(helmet());
 app.use(morgan("dev"));
 
-
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/assignments", assignmentRoutes);
 app.use("/api/blobs", blobRoutes);
+
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ status: "ok", message: "Server is running" });
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -44,7 +75,9 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
