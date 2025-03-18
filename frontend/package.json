@@ -7,10 +7,9 @@
     "dev": "vite",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    
+    "build": "vite build",
+    
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.0.14",
