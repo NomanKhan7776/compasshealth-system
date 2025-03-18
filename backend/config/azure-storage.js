@@ -1,4 +1,4 @@
-// config/azure-storage.js
+
 const { BlobServiceClient } = require("@azure/storage-blob");
 const dotenv = require("dotenv");
 

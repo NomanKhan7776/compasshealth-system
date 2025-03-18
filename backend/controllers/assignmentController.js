@@ -1,5 +1,5 @@
 // controllers/assignmentController.js
-const { blobServiceClient } = require("../config/azure-storage");
+const { blobServiceClient } = require("../config/azure-storage.js");
 const { pool, sql } = require("../config/database");
 
 // In controllers/assignmentController.js

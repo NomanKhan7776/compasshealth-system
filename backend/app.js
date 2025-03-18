@@ -71,7 +71,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/assignments", assignmentRoutes);
 app.use("/api/blobs", blobRoutes);
 
-app.get("/api/health", (req, res) => {
+app.get("/", (req, res) => {
   res.status(200).json({ status: "ok", message: "Server is running" });
 });
 
