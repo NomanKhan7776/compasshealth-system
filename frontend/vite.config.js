@@ -20,5 +20,5 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: false
   },
-  base: '/' // This is crucial for proper path resolution
+  base: './' // This is crucial for proper path resolution
 })
