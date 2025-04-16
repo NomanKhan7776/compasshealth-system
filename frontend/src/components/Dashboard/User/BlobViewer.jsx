@@ -11,23 +11,24 @@ const BlobViewer = () => {
   const { containerName, folderName } = useParams();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
-  
+
   const [blobs, setBlobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [file, setFile] = useState(null);
-  
+
   // Modal states
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [blobToDelete, setBlobToDelete] = useState(null);
 
   // Determine user permissions
   const isAdmin = currentUser?.role === "admin";
-  const canUpload = isAdmin || currentUser?.role === "doctor" || currentUser?.role === "nurse";
+  const canUpload =
+    isAdmin || currentUser?.role === "doctor" || currentUser?.role === "nurse";
   const canDelete = isAdmin;
-  
+
   // Handle back navigation based on user role
   const handleBack = () => {
     if (isAdmin) {
@@ -57,13 +58,19 @@ const BlobViewer = () => {
 
   // Handle file selection
   const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
+    const selectedFile = e.target.files[0];
+    setFile(selectedFile);
+
+    // Clear any previous errors when a new file is selected
+    if (selectedFile) {
+      setError("");
+    }
   };
 
   // Upload file to the current folder
   const handleUpload = async (e) => {
     e.preventDefault();
-    
+
     if (!file) {
       setError("Please select a file to upload");
       return;
@@ -75,19 +82,41 @@ const BlobViewer = () => {
     try {
       setUploadLoading(true);
       setError("");
-      
-      await blobsAPI.uploadBlob(containerName, folderName, formData);
+
+      const response = await blobsAPI.uploadBlob(
+        containerName,
+        folderName,
+        formData
+      );
+
       setSuccessMessage("File uploaded successfully");
       setFile(null);
-      
+
       // Reset the file input
       document.getElementById("file-upload").value = "";
-      
+
       // Refresh the blob list
       fetchBlobs();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to upload file");
-      console.error("Upload error:", err);
+      console.error("Upload error details:", err);
+
+      // Get the most specific error message possible
+      let errorMessage = "Failed to upload file. Please try again.";
+
+      if (err.response) {
+        // The server responded with an error
+        console.log("Server error response:", err.response.data);
+        errorMessage =
+          err.response.data?.message || "Server rejected the file upload";
+      } else if (err.request) {
+        // The request was made but no response received
+        errorMessage = "No response from server. Please check your connection.";
+      } else {
+        // Something else caused an error
+        errorMessage = err.message || "Unknown upload error";
+      }
+
+      setError(errorMessage);
     } finally {
       setUploadLoading(false);
     }
@@ -116,7 +145,11 @@ const BlobViewer = () => {
   // Download a blob
   const handleDownload = async (blobName) => {
     try {
-      const res = await blobsAPI.getBlobUrl(containerName, folderName, blobName);
+      const res = await blobsAPI.getBlobUrl(
+        containerName,
+        folderName,
+        blobName
+      );
       // Open the file in a new tab
       window.open(res.data.sasUrl, "_blank");
     } catch (err) {
@@ -130,18 +163,19 @@ const BlobViewer = () => {
   return (
     <div>
       <div className="flex items-center mb-6">
-        <button 
+        <button
           onClick={handleBack}
           className="text-blue-600 hover:text-blue-800 mr-2"
         >
           ← Back
         </button>
-        <h1 className="text-2xl font-bold text-gray-800">
-          {folderName}
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-800">{folderName}</h1>
       </div>
 
-      {error && <Alert message={error} type="error" />}
+      {error && (
+        <Alert message={error} type="error" onClose={() => setError("")} />
+      )}
+
       {successMessage && (
         <Alert
           message={successMessage}
@@ -152,8 +186,10 @@ const BlobViewer = () => {
 
       {canUpload && (
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Upload New File</h2>
-          
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">
+            Upload New File
+          </h2>
+
           <form onSubmit={handleUpload} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -165,15 +201,44 @@ const BlobViewer = () => {
                 onChange={handleFileChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
+              <p className="mt-1 text-sm text-gray-500">
+                Maximum file size: 10MB
+              </p>
             </div>
-            
+
             <div className="flex justify-end">
               <Button
                 type="submit"
                 color="blue"
                 disabled={!file || uploadLoading}
               >
-                {uploadLoading ? "Uploading..." : "Upload"}
+                {uploadLoading ? (
+                  <span className="flex items-center">
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Uploading...
+                  </span>
+                ) : (
+                  "Upload"
+                )}
               </Button>
             </div>
           </form>
@@ -181,8 +246,10 @@ const BlobViewer = () => {
       )}
 
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Patient Files</h2>
-        
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">
+          Patient Files
+        </h2>
+
         {blobs.length === 0 ? (
           <p className="text-gray-600">No files found in this folder.</p>
         ) : (
@@ -229,9 +296,9 @@ const BlobViewer = () => {
                           className="text-xs py-1 px-2"
                           onClick={() => handleDownload(blob.name)}
                         >
-                          Download
+                          Read/Download
                         </Button>
-                        
+
                         {canDelete && (
                           <Button
                             color="red"
@@ -276,8 +343,10 @@ const BlobViewer = () => {
         }
       >
         <p className="text-sm text-gray-500">
-          Are you sure you want to delete the file <span className="font-bold">{blobToDelete?.name}</span>?
-          This action cannot be undone and the file will be permanently removed from storage.
+          Are you sure you want to delete the file{" "}
+          <span className="font-bold">{blobToDelete?.name}</span>? This action
+          cannot be undone and the file will be permanently removed from
+          storage.
         </p>
       </Modal>
     </div>
@@ -287,11 +356,11 @@ const BlobViewer = () => {
 // Helper function to format file size
 const formatFileSize = (bytes) => {
   if (bytes === 0) return "0 Bytes";
-  
+
   const k = 1024;
   const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
+
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
