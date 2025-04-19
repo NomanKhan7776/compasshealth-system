@@ -17,6 +17,7 @@ const Footer = () => {
               Developed by{" "}
               <span className="font-semibold text-blue-600">AN Techs</span>
             </p>
+            
           </div> */}
         </div>
       </div>
